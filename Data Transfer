@@ -1,0 +1,19 @@
+function Transfer_data_V2() {
+  var srcss = SpreadsheetApp.openById('').getSheetByName('');
+  var [_, ...values_src] = srcss.getDataRange().getValues();
+
+  var dstss = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('');
+  SpreadsheetApp.flush();
+  dstss.getRange("A2:I").clearContent();
+  SpreadsheetApp.flush();
+
+  var filtered_dt = values_src.filter(r => r[5] == "Ready" && r[23] == "Approved" && r[46] === "");
+  var map_filtered_dt = filtered_dt.map(function (row) {
+    return [row[65], row[0], row[4], row[6], row[8], row[18], row[19], row[37], row[42]];
+  });
+
+  if (map_filtered_dt != "") {
+    dstss.getRange(2, 1, map_filtered_dt.length, map_filtered_dt[0].length).setValues(map_filtered_dt);
+
+  }
+}
