@@ -1,0 +1,39 @@
+(*It will compare the data from the source sheet with the destination sheet.
+If there is not found any same data, then the data will be added to the destination sheet.
+*)
+
+function pull_data() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("");
+  var [_, ...data] = sheet.getDataRange().getValues();
+  
+  var map_data = data.map(function (row) {
+    return row[0];
+  });
+  //console.log(map_data)
+
+  var last_RPA_Row = sheet.getLastRow();
+
+  var src_data = SpreadsheetApp.openById('').getSheetByName('');
+  var [_, ...source_data] = src_data.getDataRange().getValues();
+  var filtered_dt = source_data.filter(r => r[5] == "Ready" && r[23] == "Approved" && r[46] == "");
+  var extract_col = filtered_dt.map(function (x) {
+    return [x[65], x[0], x[4], x[6], x[8], x[18], x[19], x[37], x[42]];
+  });
+
+  var arr = [];
+  if (data === "") {
+    arr.push(extract_col);
+  } else {
+    for (var j = 0; j < extract_col.length; j++) {
+      if (map_data.indexOf(extract_col[j][0]) == -1) {
+        arr.push(extract_col[j])
+      }
+    }
+  }
+  if (arr != "") {
+    sheet.getRange(2, 1, arr.length, arr[0].length).setValues(arr);
+  }
+
+
+}
