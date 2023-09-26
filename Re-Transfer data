@@ -1,0 +1,102 @@
+
+function createblobpdfs(sheetName, pdfName) { 
+  var sourceSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sourceSheet = sourceSpreadsheet.getSheetByName(sheetName);
+  var range = 'B:AY';
+  var url = 'https://docs.google.com/spreadsheets/d/' + sourceSpreadsheet.getId() + '/export?exportFormat=pdf&format=pdf' // export as pdf / csv / xls / xlsx
+    + '&range=' + range
+    + '&top_margin=0.1'
+    + '&left_margin=0.1'
+    + '&right_margin=0.1'
+    + '&bottom_margin=0'
+    + '&size=A4' // paper size legal / letter / A4
+    + '&portrait=false' // orientation, false for landscape
+    + '&fitw=true' // fit to page width, false for actual size
+    + '&sheetnames=false'
+    + '&printtitle=false' // hide optional headers and footers
+    + '&pagenum=RIGHT'
+    + '&gridlines=false' // hide page numbers and gridlines
+    + '&fzr=false' // do not repeat row headers (frozen rows) on each page
+    + '&horizontal_alignment=CENTER' //LEFT/CENTER/RIGHT
+    + '&vertical_alignment=TOP' //TOP/MIDDLE/BOTTOM
+    + '&gid=' + sourceSheet.getSheetId(); // the sheet's Id
+  var token = ScriptApp.getOAuthToken();
+  // request export url
+  var response = UrlFetchApp.fetch(url, {
+    headers: {
+      'Authorization': 'Bearer ' + token
+    }
+  });
+  var theBlob = response.getBlob().setName(pdfName);
+  return theBlob;
+};
+
+
+
+function retransfer_data() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("");
+  var sheetName = sheet.getName();
+  var data = sheet.getDataRange().getValues();
+  set_rowHeight(sheetName, data);
+
+  var ss_target = SpreadsheetApp.openById("");
+  var sheet_target = ss_target.getSheetByName("");
+  var data_target_Req_No = sheet_target.getRange("C2:C").getValues();
+
+
+  var log_reqno_sheet = ss.getSheetByName('Log');
+  var log_reqno_sheet_data = log_reqno_sheet.getDataRange().getValues();
+  var log_reqno_data = log_reqno_sheet.getRange("A2:A").getValues();
+
+  var filter_check_log = log_reqno_sheet_data.filter(r => r[2] == 'Failed');
+  var filteredValues = log_reqno_data.filter(function (value) {
+    return data_target_Req_No.includes(value);
+  });
+
+  if (filter_check_log != '' && filteredValues == '') {
+
+    var no_req = filter_check_log[0][0];
+
+    var sheetName = sheet.getName();
+    var [_, ...data] = sheet.getDataRange().getValues();
+
+    var date = Utilities.formatDate(new Date(), "GMT+7", "d/M/yyyy HH:mm:ss");
+    var folderID = "";
+    var folder = DriveApp.getFolderById(folderID);
+
+    // modify department name
+    var split_ss_name = ss.getName().toString().split("-");
+    var department = split_ss_name[1].trim();
+
+    var lr = sheet_target.getLastRow(); // untuk print
+    var pdfName = "File " + no_req + " - " + date + " - " + department + ".pdf";
+    var theBlob = createblobpdfs(sheetName, pdfName);
+    var newFile = folder.createFile(theBlob);
+    var newFile_name = newFile.getName();
+    console.log(newFile_name);
+
+    Utilities.sleep(7000);
+
+    var files = folder.getFilesByName(newFile_name);
+    if (files.hasNext()) {
+      var nextFile = files.next();
+      var fileid = nextFile.getId()
+      var url = DriveApp.getFileById(fileid).getUrl();
+
+      var timestamp = Utilities.formatDate(new Date(), "GMT+7", "MM/d/yyyy HH:mm:ss");
+      var path = /\b\d{1,2}\/\d{1,2}\/\d{4}\b/g;
+      var date_only = timestamp.match(path);
+      var arr = [];
+      arr.push([timestamp, date_only, no_req, department, url])
+    }
+    sheet_target.getRange(lr + 1, 1, arr.length, arr[0].length).setValues(arr);
+    sheet_target.getRange(lr + 1, 45).setValue("New Request");
+  } else {
+    var Error = "⚠️ There aren't any failed converted data! ⚠️"
+    throw (Error);
+    return;
+  }
+  
+
+}
